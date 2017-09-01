@@ -1,4 +1,4 @@
-package com.fecar.core;
+package com.nichao.core;
 
 /**
  *集分类器的名称枚举
@@ -6,7 +6,7 @@ package com.fecar.core;
 public enum BaseClassiferEnum {
 	NB,/*Naive Bayes*/
 	LR,/*Logistic Regression*/
-	IBK,/*K-Nearest-Neighbour*/
+	KNN,/*K-Nearest-Neighbour*/
 	J48,/*J48-tree-based*/
 
 }

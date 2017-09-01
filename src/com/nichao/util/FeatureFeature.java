@@ -1,4 +1,4 @@
-package com.fecar.util;
+package com.nichao.util;
 
 import weka.attributeSelection.SymmetricalUncertAttributeEval;
 import weka.core.Instances;
@@ -9,7 +9,7 @@ import java.text.DecimalFormat;
 public class FeatureFeature {
 	
 	//“—≤‚ ‘£¨’˝»∑°£
-	public double[][] getFfSu(Instances instances)
+	public static double[][] getFfSu(Instances instances)
 	{
 		double su[][]=new double[instances.numAttributes()-1][instances.numAttributes()-1];
 		try {			

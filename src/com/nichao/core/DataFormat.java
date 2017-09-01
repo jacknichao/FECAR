@@ -1,4 +1,4 @@
-package com.fecar.core;
+package com.nichao.core;
 
 public class DataFormat {
 

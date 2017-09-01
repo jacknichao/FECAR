@@ -1,4 +1,4 @@
-package com.fecar.util;
+package com.nichao.util;
 
 import weka.attributeSelection.ChiSquaredAttributeEval;
 import weka.attributeSelection.InfoGainAttributeEval;
@@ -9,7 +9,7 @@ import weka.core.Instances;
 public class FeatureClass {
 		
 	//已测试，正确
-	public double[]getFTSu(Instances instances)
+	public static double[] getFCSu(Instances instances)
 	{
 		double su[]=new double[instances.numAttributes()-1];
 		try {			
@@ -32,7 +32,7 @@ public class FeatureClass {
 	}	
 	
 	//已测试，正确
-		public double[]getFTIG(Instances instances)
+		public static double[] getFCIG(Instances instances)
 		{
 			double IG[]=new double[instances.numAttributes()-1];
 			try {			
@@ -52,7 +52,7 @@ public class FeatureClass {
 		}	
 		
 //已测试，正确
-		public double[]getFTRelief(Instances instances)
+		public static double[] getFCRelief(Instances instances)
 		{
 			double RF[]=new double[instances.numAttributes()-1];
 			try {			
@@ -74,7 +74,7 @@ public class FeatureClass {
 		}			
 	
 //已测试，正确
-	public double[]getFTChisquare(Instances instances)
+	public static double[] getFCChisquare(Instances instances)
 	{
 		double CS[]=new double[instances.numAttributes()-1];
 		try {			
