@@ -26,6 +26,8 @@ public class FeatureSelection {
 	 */
 	public static int[] ChiSquared_Ranker(Instances train,int numSelected){
 
+		train.setClassIndex(train.numAttributes()-1);
+
 		AttributeSelection attrsel=new AttributeSelection();
 		ChiSquaredAttributeEval eval=new ChiSquaredAttributeEval();
 		Ranker search=new Ranker();
@@ -55,6 +57,8 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] GainRatio_Ranker(Instances train,int numSelected){
+
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel=new AttributeSelection();
 		GainRatioAttributeEval eval=new GainRatioAttributeEval();
@@ -86,6 +90,8 @@ public class FeatureSelection {
 	 */
 	public static int[] InfoGain_Ranker(Instances train,int numSelected){
 
+		train.setClassIndex(train.numAttributes()-1);
+
 		AttributeSelection attrsel=new AttributeSelection();
 		InfoGainAttributeEval eval=new InfoGainAttributeEval();
 		Ranker search=new Ranker();
@@ -115,6 +121,7 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] SymmetricalUncert_Ranker(Instances train,int numSelected){
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel=new AttributeSelection();
 		SymmetricalUncertAttributeEval eval=new SymmetricalUncertAttributeEval();
@@ -146,6 +153,8 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] ReliefF_Ranker(Instances train,int numSelected){
+
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel=new AttributeSelection();
 		ReliefFAttributeEval eval=new ReliefFAttributeEval();
@@ -180,6 +189,8 @@ public class FeatureSelection {
 	 */
 	public static int[] SVM_Ranker(Instances train,int numSelected) {
 
+		train.setClassIndex(train.numAttributes()-1);
+
 		AttributeSelection attrsel = new AttributeSelection();
 		SVMAttributeEval eval = new SVMAttributeEval();
 
@@ -210,6 +221,8 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] OneR_Ranker(Instances train,int numSelected) {
+
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel = new AttributeSelection();
 		OneRAttributeEval eval=new OneRAttributeEval();
@@ -245,6 +258,8 @@ public class FeatureSelection {
 	 */
 	public static int[] CfsSubset_GreegyStepwise(Instances train) {
 
+		train.setClassIndex(train.numAttributes()-1);
+
 		AttributeSelection attrsel = new AttributeSelection();
 
 		CfsSubsetEval eval=new CfsSubsetEval();
@@ -274,6 +289,8 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] ConsistencySubset_GreegyStepwise(Instances train) {
+
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel = new AttributeSelection();
 
@@ -310,7 +327,7 @@ public class FeatureSelection {
 		double[][] similarity = FeatureFeature.getFfSu(train);
 		double[] trelev = FeatureClass.getFCIG(train);
 
-		int numclusters=(int)Math.floor(Math.log(train.numAttributes()-1)/2);
+		int numclusters=(int)Math.ceil(Math.log(train.numAttributes()-1)/2);
 
 		return Kmedoid_attrsel(train, numclusters, numSelect, similarity, trelev);
 	}
@@ -326,7 +343,7 @@ public class FeatureSelection {
 		double[][] similarity = FeatureFeature.getFfSu(train);
 		double[] trelev = FeatureClass.getFCChisquare(train);
 
-		int numclusters=(int)Math.floor(Math.log(train.numAttributes()-1)/2);
+		int numclusters=(int)Math.ceil(Math.log(train.numAttributes()-1)/2);
 
 		return Kmedoid_attrsel(train, numclusters, numSelect, similarity, trelev);
 	}
@@ -342,7 +359,7 @@ public class FeatureSelection {
 		double[][] similarity = FeatureFeature.getFfSu(train);
 		double[] trelev = FeatureClass.getFCRelief(train);
 
-		int numclusters=(int)Math.floor(Math.log(train.numAttributes()-1)/2);
+		int numclusters=(int)Math.ceil(Math.log(train.numAttributes()-1)/2);
 
 		return Kmedoid_attrsel(train, numclusters, numSelect, similarity, trelev);
 	}
@@ -358,7 +375,7 @@ public class FeatureSelection {
 		double[][] similarity = FeatureFeature.getFfSu(train);
 		double[] trelev = FeatureClass.getFCSu(train);
 
-		int numclusters=(int)Math.floor(Math.log(train.numAttributes()-1)/2);
+		int numclusters=(int)Math.ceil(Math.log(train.numAttributes()-1)/2);
 
 		return Kmedoid_attrsel(train, numclusters, numSelect, similarity, trelev);
 	}
@@ -370,12 +387,17 @@ public class FeatureSelection {
 	private static int[] Kmedoid_attrsel(Instances train, int numclusters, int numSelect, double[][] similarity, double[] trelev) {
 		int[] selectedArr=null;
 		try {
+			//保存当前实例的类标编号，因为在Clusters算法内部是不会保存类标属性的
+			int classIndex=train.numAttributes()-1;
 
 			Clusters clusters = new Clusters(similarity, trelev, numclusters, train.numAttributes() - 1);
 			clusters.clustrUnitlConvergence();
 			clusters.rankClusters();//完成聚类
 
 			ArrayList<Integer> selectedArraylist = clusters.selectAttributes(numSelect);
+			//将类标属性加入到保存的属性数组中
+			selectedArraylist.add(classIndex);
+
 			selectedArr = new int[selectedArraylist.size()];
 			for (int i = 0; i < selectedArraylist.size(); ++i)
 				selectedArr[i] = selectedArraylist.get(i);
@@ -397,6 +419,7 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseNB(Instances train) {
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel = new AttributeSelection();
 
@@ -430,6 +453,8 @@ public class FeatureSelection {
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseJ48(Instances train) {
 
+		train.setClassIndex(train.numAttributes()-1);
+
 		AttributeSelection attrsel = new AttributeSelection();
 
 		WrapperSubsetEval eval=new WrapperSubsetEval();
@@ -461,6 +486,8 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseLR(Instances train) {
+
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel = new AttributeSelection();
 
@@ -494,6 +521,7 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseKNN(Instances train) {
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel = new AttributeSelection();
 
@@ -530,6 +558,8 @@ public class FeatureSelection {
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseNB_Back(Instances train) {
 
+		train.setClassIndex(train.numAttributes()-1);
+
 		AttributeSelection attrsel = new AttributeSelection();
 
 		WrapperSubsetEval eval=new WrapperSubsetEval();
@@ -564,6 +594,8 @@ public class FeatureSelection {
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseJ48_Back(Instances train) {
 
+		train.setClassIndex(train.numAttributes()-1);
+
 		AttributeSelection attrsel = new AttributeSelection();
 
 		WrapperSubsetEval eval=new WrapperSubsetEval();
@@ -597,6 +629,8 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseLR_Back(Instances train) {
+		train.setClassIndex(train.numAttributes()-1);
+
 
 		AttributeSelection attrsel = new AttributeSelection();
 
@@ -631,6 +665,8 @@ public class FeatureSelection {
 	 * @return 选择的特征索引
 	 */
 	public static int[] WrapperSubset_GreegyStepwiseKNN_Back(Instances train) {
+
+		train.setClassIndex(train.numAttributes()-1);
 
 		AttributeSelection attrsel = new AttributeSelection();
 

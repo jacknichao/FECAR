@@ -8,7 +8,7 @@ public class test {
 
 	public static void main(String[] args) throws  Exception{
 
-		Instances train= ConverterUtils.DataSource.read("/home/jacknichao/datasets/Relink/Apache.arff");
+//		Instances train= ConverterUtils.DataSource.read("/home/jacknichao/datasets/Relink/Apache.arff");
 	/*	int[] indices={2,6,10};
 		Remove remove=new Remove();
 //		remove.setOptions(new String[]{"-V"});
@@ -50,6 +50,12 @@ public class test {
 
 
 	//	System.out.println(Utils.arrayToString(FeatureSelection.test(train)));
+
+//		System.out.println(Math.log(27)/Math.log(2));
+		System.out.println(Math.ceil(Math.log(27)/Math.log(2)));
+//		System.out.println(Math.log(62)/Math.log(2));
+		System.out.println(Math.ceil(Math.log(62)/Math.log(2)));
+
 
 
 	}
