@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
@@ -23,15 +24,19 @@ import java.util.Random;
 public class Driver {
 
 	/**
-	 * 将源项目分成70%的训练集和30%的验证集，对两者进行特征过滤，最后在30%的数据集上3-折交叉验证
+	 * 将源项目分成70%的训练集和30%的验证集，对两者进行特征过滤，
+	 * 在70%训练数据上进行预测，然后在30%测试数据上进行判断，得到预测结果；
+	 * 此外，还直接在30%的数据集上3-折交叉验证
 	 *
 	 * @param instances         项目数据的实例
 	 * @param baseClassiferEnum 基分类器枚举
 	 * @param numSelected       需要选择的特征个数
-	 * @return 3-折交叉验证的结果
+	 * @return 返回两个Evaluation结果：
+	 * 第一个表示预测得到的结果
+	 * 第二个表示在测试集上的适应值
 	 */
-	public static Evaluation doCrossValidation(Instances instances, int numSelected, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum) {
-		Evaluation evaluations = null;
+	public static Evaluation[] doCrossValidation(Instances instances, int numSelected, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum) {
+		Evaluation[] evaluations = null;
 		try {
 			instances.setClassIndex(instances.numAttributes() - 1);
 
@@ -51,9 +56,13 @@ public class Driver {
 				remove.setInputFormat(test);
 				//Filter默认会产生新的Instances因此需要将train和test指向新产生的Instances
 				test = Filter.useFilter(test, remove);
+
+				//删除训练集中的属性
+				train = Filter.useFilter(train, remove);
 			}
 
-			evaluations = ClassifierValidation.classify(test, baseClassiferEnum, null);
+			//ClassifierValidation类的内部同时完成预测性能和适应值的计算,因此有两个评估结果
+			evaluations = ClassifierValidation.classify(train, test, baseClassiferEnum, null);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -93,8 +102,10 @@ public class Driver {
 					for (BaseClassiferEnum baseClassiferEnum : BaseClassiferEnum.values()) {
 
 						//用序列花操作过后的实例重新生成一份，以防止对后续实验结果产生影响
-						Evaluation evaluation = doCrossValidation(new Instances(innerInstances), numSelect, baseClassiferEnum, fsEnum);
-						writer.write(fileName + "," + outerIterate + "," + innerIterate + "," + numSelect + "," + baseClassiferEnum + "," + fsEnum + "," + evaluation.weightedAreaUnderROC() + "\r\n");
+						Evaluation[] evaluation = doCrossValidation(new Instances(innerInstances), numSelect, baseClassiferEnum, fsEnum);
+						String resultStr = fileName + "," + outerIterate + "," + innerIterate + "," + numSelect + "," + baseClassiferEnum + "," + fsEnum + "," + evaluation[0].weightedAreaUnderROC() + "," + evaluation[1].weightedAreaUnderROC() + "\r\n";
+						writer.write(resultStr);
+						System.out.println(resultStr);
 					}
 
 				}
@@ -129,10 +140,11 @@ public class Driver {
 
 				//得到该数据集中的所有项目
 				currenctDataSet = MyTools.getProjects(dataset);
-				String resultFile = resultPath + datasetName + ".csv";
+				SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddhhmmss");
+				String resultFile = resultPath + datasetName + sdf.format(new Date()) + ".csv";
 				BufferedWriter bufferedWriter = Files.newBufferedWriter(Paths.get(resultFile));
 				//写入表头
-				bufferedWriter.write("projectName,outerIterate,innerIterate,numSelected,baseClassifier,featureSelectionMethod,weightedAUC\r\n");
+				bufferedWriter.write("projectName,outerIterate,innerIterate,numSelected,baseClassifier,featureSelectionMethod,predictValueWAUC,fitnessValueWAUC\r\n");
 
 				//当前数据集中需要选择的特征个数
 				int numSelect = Integer.parseInt(MyTools.getBaseInfo(dataset + "SelectNum"));
