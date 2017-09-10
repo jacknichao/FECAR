@@ -43,3 +43,23 @@ This project implements different feature selection methods, such as (1) filter-
 	wrapper based greedy backward selection
 
 
+
+##USAGE (IDEA):
+1) git clone https://github.com/jacknichao/FeatureSelectionFactory.git
+
+2) import this project with IDEA
+
+3) build this project
+
+4) create an artifact and make sure that the main class is "com.nichao.driver.Driver".
+   after that ,a jar will be created, such as FeatureSelectionFactory.jar
+
+5) edit /configs/baseinfo.properties and provide the required fields
+
+6) make a copy of /configs/baseinfo.properties
+
+7) put baseinfo.properties and FeatureSelectionFactory.jar in same directory
+
+8) write down this command 'java -jar FeatureSelectionFactory.jar', then press the return key, 
+   
+9) up here, you will see running information on the terminal screen 

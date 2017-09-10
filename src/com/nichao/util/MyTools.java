@@ -1,6 +1,7 @@
 package com.nichao.util;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,8 +14,7 @@ public class MyTools {
 		if(hashMap==null) hashMap=new HashMap<>();
 		Properties prop = new Properties();
 		try {
-			prop.load(MyTools.class.getClassLoader()
-					.getResourceAsStream("baseinfo.properties"));
+			prop.load(new FileInputStream("baseinfo.properties"));
 
 			for(String pName: prop.stringPropertyNames()){
 				hashMap.put(pName,prop.get(pName).toString());

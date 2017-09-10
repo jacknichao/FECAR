@@ -23,6 +23,12 @@ import java.util.Random;
 
 public class Driver {
 
+		//外循环的次数
+		private static int	outerIterate_=10;
+
+		//内循环的次数
+		private static int	innerIterate_=10;
+
 	/**
 	 * 将源项目分成70%的训练集和30%的验证集，对两者进行特征过滤，
 	 * 在70%训练数据上进行预测，然后在30%测试数据上进行判断，得到预测结果；
@@ -81,7 +87,7 @@ public class Driver {
 
 		try {
 			//这里进行内层的10次随机循环
-			for (int innerIterate = 1; innerIterate <= 10; innerIterate++) {
+			for (int innerIterate = 1; innerIterate <= innerIterate_; innerIterate++) {
 
 				//新建一份内层循环的实例集合
 				Instances innerInstances = new Instances(outerInstances);
@@ -119,6 +125,9 @@ public class Driver {
 		String datasetName = MyTools.getBaseInfo("datasetName");
 		String resultPath = MyTools.getBaseInfo("resultPath");
 
+		outerIterate_=Integer.parseInt(MyTools.getBaseInfo("outerIterate"));
+		innerIterate_=Integer.parseInt(MyTools.getBaseInfo("innerIterate"));
+
 		if (!Files.exists(Paths.get(resultPath))) {
 			try {
 				Files.createDirectories(Paths.get(resultPath));
@@ -150,7 +159,7 @@ public class Driver {
 					Instances originalInstances = ConverterUtils.DataSource.read(file.toString());
 
 					//外层10次随机循环
-					for (int outerIterate = 1; outerIterate <= 10; outerIterate++) {
+					for (int outerIterate = 1; outerIterate <= outerIterate_; outerIterate++) {
 						//新建一个外层循环的实例集合
 						Instances outerInstances = new Instances(originalInstances);
 						//先进行外层的随机化,为了避免内层随机化与外层的一样，内层的随机因子将在外层的随机因子上加1
