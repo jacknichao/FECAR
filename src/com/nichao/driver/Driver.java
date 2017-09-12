@@ -33,39 +33,36 @@ public class Driver {
 	 * 将源项目分成70%的训练集和30%的验证集，对两者进行特征过滤，
 	 * 在70%训练数据上进行预测，然后在30%测试数据上进行判断，得到预测结果；
 	 *
-	 * @param instances         项目数据的实例
+	 * @param trainning         训练数据的实例
+	 * @param testing			测试数据的实例
 	 * @param baseClassiferEnum 基分类器枚举
 	 * @param numSelected       需要选择的特征个数
 	 * @return 返回Evaluation：表示预测得到的结果
 	 */
-	public static Evaluation doCrossValidation(Instances instances, int numSelected, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum) {
+	public static Evaluation doCrossValidation(Instances trainning, Instances testing, int numSelected, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum) {
 		Evaluation evaluations = null;
 		try {
-			instances.setClassIndex(instances.numAttributes() - 1);
-
-			//计算前70%的实例的索引
-			int index = (int) Math.round(instances.numInstances() * 0.7);
-			Instances train = new Instances(instances, 0, index);
-			Instances test = new Instances(instances, index, instances.numInstances() - index);
+			trainning.setClassIndex(trainning.numAttributes() - 1);
+			testing.setClassIndex(testing.numAttributes()-1);
 
 
 			//除了不使用特征选择技术的，都需要进行特征过滤处理
 			if (fsEnum != FeatureSelectMethodEnum.FULL) {
-				int[] savedFeature = FeatureSelection.doFeatureSelection(train, fsEnum, numSelected);
+				int[] savedFeature = FeatureSelection.doFeatureSelection(trainning, fsEnum, numSelected);
 				Remove remove = new Remove();
 				//相反选择设置，表示输入的属性索引都是需要保存的
 				remove.setInvertSelection(true);
 				remove.setAttributeIndicesArray(savedFeature);
-				remove.setInputFormat(test);
-				//Filter默认会产生新的Instances因此需要将train和test指向新产生的Instances
-				test = Filter.useFilter(test, remove);
+				remove.setInputFormat(testing);
+				//Filter默认会产生新的Instances因此需要将trainning和testing指向新产生的Instances
+				testing = Filter.useFilter(testing, remove);
 
 				//删除训练集中的属性
-				train = Filter.useFilter(train, remove);
+				trainning = Filter.useFilter(trainning, remove);
 			}
 
 			//ClassifierValidation类的内部同时完成预测性能的计算
-			evaluations = ClassifierValidation.classify(train, test, baseClassiferEnum, null);
+			evaluations = ClassifierValidation.classify(trainning, testing, baseClassiferEnum, null);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -84,19 +81,25 @@ public class Driver {
 	 * @param writer         保存结果的文件句柄
 	 */
 	public static void doDefectPrediciton(String fileName, Instances outerInstances, int outerIterate, int numSelect, BufferedWriter writer) {
+		//计算前70%的实例的索引
+		int index = (int) Math.round(outerInstances.numInstances() * 0.7);
+		Instances train = new Instances(outerInstances, 0, index);
+		Instances test = new Instances(outerInstances, index, outerInstances.numInstances() - index);
+		train.setClassIndex(train.numAttributes()-1);
+		test.setClassIndex(test.numAttributes()-1);
 
 		try {
 			//这里进行内层的10次随机循环
 			for (int innerIterate = 1; innerIterate <= innerIterate_; innerIterate++) {
 
-				//新建一份内层循环的实例集合
-				Instances innerInstances = new Instances(outerInstances);
+				//新建一份内层循环的70%实例集合
+				Instances trainCopy = new Instances(train);
 
 				//内层随机化
-				innerInstances.setClassIndex(innerInstances.numAttributes() - 1);
-				innerInstances.randomize(new Random(outerIterate + innerIterate));
-				if (innerInstances.classAttribute().isNominal()) {
-					innerInstances.stratify(10);
+				trainCopy.setClassIndex(trainCopy.numAttributes() - 1);
+				trainCopy.randomize(new Random(outerIterate + innerIterate));
+				if (trainCopy.classAttribute().isNominal()) {
+					trainCopy.stratify(10);
 				}
 
 				//遍历每一个特征选择方法
@@ -105,7 +108,7 @@ public class Driver {
 					for (BaseClassiferEnum baseClassiferEnum : BaseClassiferEnum.values()) {
 
 						//随机化操作过后的实例需要重新生成一份，以防止对后续实验结果产生影响
-						Evaluation evaluation = doCrossValidation(new Instances(innerInstances), numSelect, baseClassiferEnum, fsEnum);
+						Evaluation evaluation = doCrossValidation(new Instances(trainCopy),new Instances(test), numSelect, baseClassiferEnum, fsEnum);
 						String resultStr = fileName + "," + outerIterate + "," + innerIterate + "," + numSelect + "," + baseClassiferEnum + "," + fsEnum + "," + evaluation.weightedAreaUnderROC() + "\r\n";
 						writer.write(resultStr);
 						System.out.println(resultStr);
