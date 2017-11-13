@@ -696,47 +696,47 @@ public class FeatureSelection {
 	 * 调用指定的特征选择方法来完成特征选择任务
 	 * @param train 训练集
 	 * @param featureSelectMethodEnum   特征选择方法的枚举
-	 * @param numSelect 需要选择的特征数量
+	 * @param targetNumSelect 目标需要选择的特征数量
 	 * @return 返回需要保留的属性的索引数组
 	 */
-	public static int[] doFeatureSelection(Instances train, FeatureSelectMethodEnum featureSelectMethodEnum,int numSelect){
+	public static int[] doFeatureSelection(Instances train, FeatureSelectMethodEnum featureSelectMethodEnum,int targetNumSelect){
 		int[] selectedIndex=null;
 		switch (featureSelectMethodEnum){
 			case Cluster_ChiSquare_FeatureSelection:
-				selectedIndex=Cluster_ChiSquare_FeatureSelection(train,numSelect);
+				selectedIndex=Cluster_ChiSquare_FeatureSelection(train,targetNumSelect);
 				break;
 			case Cluster_ReliefF_FeatureSelection:
-				selectedIndex=Cluster_ReliefF_FeatureSelection(train,numSelect);
+				selectedIndex=Cluster_ReliefF_FeatureSelection(train,targetNumSelect);
 				break;
 			case Cluster_SU_FeatureSelection:
-				selectedIndex=Cluster_SU_FeatureSelection(train,numSelect);
+				selectedIndex=Cluster_SU_FeatureSelection(train,targetNumSelect);
 				break;
 			case Cluster_IG_FeatureSelection:
-				selectedIndex=Cluster_IG_FeatureSelection(train,numSelect);
+				selectedIndex=Cluster_IG_FeatureSelection(train,targetNumSelect);
 				break;
 			case SVM_Ranker:
-				selectedIndex=SVM_Ranker(train,numSelect);
+				selectedIndex=SVM_Ranker(train,targetNumSelect);
 				break;
 			case OneR_Ranker:
-				selectedIndex=OneR_Ranker(train,numSelect);
+				selectedIndex=OneR_Ranker(train,targetNumSelect);
 				break;
 			case ReliefF_Ranker:
-				selectedIndex=ReliefF_Ranker(train,numSelect);
+				selectedIndex=ReliefF_Ranker(train,targetNumSelect);
 				break;
 			case InfoGain_Ranker:
-				selectedIndex=InfoGain_Ranker(train,numSelect);
+				selectedIndex=InfoGain_Ranker(train,targetNumSelect);
 				break;
 			case GainRatio_Ranker:
-				selectedIndex=GainRatio_Ranker(train,numSelect);
+				selectedIndex=GainRatio_Ranker(train,targetNumSelect);
 				break;
 			case ChiSquared_Ranker:
-				selectedIndex=ChiSquared_Ranker(train,numSelect);
+				selectedIndex=ChiSquared_Ranker(train,targetNumSelect);
 				break;
 			case CfsSubset_GreegyStepwise:
 				selectedIndex=CfsSubset_GreegyStepwise(train);
 				break;
 			case SymmetricalUncert_Ranker:
-				selectedIndex=SymmetricalUncert_Ranker(train,numSelect);
+				selectedIndex=SymmetricalUncert_Ranker(train,targetNumSelect);
 				break;
 			case ConsistencySubset_GreegyStepwise:
 				selectedIndex=ConsistencySubset_GreegyStepwise(train);
