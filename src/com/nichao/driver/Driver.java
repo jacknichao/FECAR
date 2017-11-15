@@ -96,18 +96,16 @@ public class Driver {
 	public static void doDefectPrediciton(String fileName, Instances outerInstances, int outerIterate, int targetNumSelect, BufferedWriter writer) {
 
 		try {
-			//这里进行内层的10次随机循环
+			//这里进行内层的10次循环,某些方法得到的结果一致，但是有些方法每一次运行得到的结果都是不一样的
 			for (int innerIterate = 1; innerIterate <= innerIterate_; innerIterate++) {
 
 				//新建一份内层循环的实例集合
 				Instances innerInstances = new Instances(outerInstances);
 
-				//内层随机化
 				innerInstances.setClassIndex(innerInstances.numAttributes() - 1);
-				innerInstances.randomize(new Random(outerIterate + innerIterate));
-				if (innerInstances.classAttribute().isNominal()) {
-					innerInstances.stratify(10);
-				}
+
+				//make the same running environment with MOFES
+				//innerInstances.randomize(new Random(outerIterate + innerIterate));
 
 				//遍历每一个特征选择方法
 				for (FeatureSelectMethodEnum fsEnum : FeatureSelectMethodEnum.values()) {
