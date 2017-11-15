@@ -2,6 +2,7 @@ package com.nichao.driver;
 
 import com.nichao.core.*;
 import com.nichao.util.MyTools;
+import org.omg.PortableServer.THREAD_POLICY_ID;
 import weka.classifiers.Evaluation;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
@@ -17,30 +18,59 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class Driver {
 
-		//外循环的次数
-		private static int	outerIterate_=10;
+/**
+ * 使用多线程的方式运行交叉检验任务
+ */
+class CrossValidation implements Runnable {
 
-		//内循环的次数
-		private static int	innerIterate_=10;
+	private String fileName = null;
+	private int outerIterate = 0;
+	private int innerIterate = 0;
+	private Instances instances = null;
+	private int targetNumSelect = 0;
+	private BaseClassiferEnum baseClassiferEnum = null;
+	private FeatureSelectMethodEnum fsEnum = null;
+	private BufferedWriter bufferedWriter = null;
+
+
+	public CrossValidation(String fileName, int outerIterate, int innerIterate, Instances instances, int targetNumSelect, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum, BufferedWriter bufferedWriter) {
+
+		this.fileName = fileName;
+		this.outerIterate = outerIterate;
+		this.innerIterate = innerIterate;
+		this.instances = instances;
+		this.targetNumSelect = targetNumSelect;
+		this.baseClassiferEnum = baseClassiferEnum;
+		this.fsEnum = fsEnum;
+		this.bufferedWriter = bufferedWriter;
+	}
 
 	/**
-	 * 将源项目分成70%的训练集和30%的验证集，对两者进行特征过滤，
-	 * 在70%训练数据上进行预测，然后在30%测试数据上进行判断，得到预测结果；
+	 * 同步每一个写出结果的线程
 	 *
-	 * @param instances         项目数据的实例
-	 * @param baseClassiferEnum 基分类器枚举
-	 * @param targetNumSelect       打算要选择的特征个数
-	 * @return 返回Result：表示实际选择出来的特征的个数和预测得到的结果
+	 * @param result
 	 */
-	public static Result doCrossValidation(Instances instances, int targetNumSelect, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum) {
-		Result result=null;
+	synchronized public void writeResults(Result result) {
+		String resultStr = fileName + "," + outerIterate + "," + innerIterate + "," + result.getRealSelectedNum() + ","
+				+ baseClassiferEnum + "," + fsEnum + "," + result.getEvaluation().weightedAreaUnderROC() + "\r\n";
+		try {
+			bufferedWriter.write(resultStr);
+			bufferedWriter.flush();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
+
+	@Override
+	public void run() {
+		Result result = null;
 		Evaluation evaluations = null;
-		int realSelectedNum=0;
-
+		int realSelectedNum = 0;
 		try {
 			instances.setClassIndex(instances.numAttributes() - 1);
 
@@ -52,9 +82,9 @@ public class Driver {
 
 			//除了不使用特征选择技术的，都需要进行特征过滤处理
 			if (fsEnum != FeatureSelectMethodEnum.FULL) {
-				int[] savedFeature = FeatureSelection.doFeatureSelection(train, fsEnum, targetNumSelect);
+				int[] savedFeature = new FeatureSelection().doFeatureSelection(train, fsEnum, targetNumSelect);
 				//获得实际选择出来的特征个数
-				realSelectedNum=savedFeature.length;
+				realSelectedNum = savedFeature.length;
 
 				Remove remove = new Remove();
 				//相反选择设置，表示输入的属性索引都是需要保存的
@@ -66,34 +96,54 @@ public class Driver {
 
 				//删除训练集中的属性
 				train = Filter.useFilter(train, remove);
-			}else{
-				realSelectedNum=train.numAttributes()-1;
+			} else {
+				realSelectedNum = train.numAttributes() - 1;
 			}
 
 			//ClassifierValidation类的内部同时完成预测性能的计算
 			evaluations = ClassifierValidation.classify(train, test, baseClassiferEnum, null);
 
-
-			result=new Result(realSelectedNum,evaluations);
-
-
+			result = new Result(realSelectedNum, evaluations);
 		} catch (Exception e) {
 			e.printStackTrace();
+		} finally {
+			//最终将结果写入到文件中
+			writeResults(result);
+			System.err.println("完成作业:\t"+this);
 		}
-		return result;
 	}
+}
+
+public class Driver {
+
+	/**
+	 *外循环的次数
+	 */
+	private static int outerIterate_ = 10;
+
+	/**
+	 * 内循环的次数
+	 */
+	private static int innerIterate_ = 10;
+
+
+	/**
+	 * 提交作业的时间间隔，如每一秒提交一次
+	 */
+	private static int interval_=1;
 
 
 	/**
 	 * 完成内层十次循环
 	 *
-	 * @param fileName       文件名称
-	 * @param outerInstances 被外层随机化后的项目实例
-	 * @param outerIterate   外层循环的编号
-	 * @param targetNumSelect      需要选择的特征个数
-	 * @param writer         保存结果的文件句柄
+	 * @param fileName        文件名称
+	 * @param outerInstances  被外层随机化后的项目实例
+	 * @param outerIterate    外层循环的编号
+	 * @param targetNumSelect 需要选择的特征个数
+	 * @param writer          保存结果的文件句柄
+	 * @param pool            线程池
 	 */
-	public static void doDefectPrediciton(String fileName, Instances outerInstances, int outerIterate, int targetNumSelect, BufferedWriter writer) {
+	public static void doDefectPrediciton(String fileName, Instances outerInstances, int outerIterate, int targetNumSelect, BufferedWriter writer, ExecutorService pool) {
 
 		try {
 			//这里进行内层的10次循环,某些方法得到的结果一致，但是有些方法每一次运行得到的结果都是不一样的
@@ -112,15 +162,19 @@ public class Driver {
 					//遍历每一个集分类
 					for (BaseClassiferEnum baseClassiferEnum : BaseClassiferEnum.values()) {
 
-						//随机化操作过后的实例需要重新生成一份，以防止对后续实验结果产生影响
-						Result result = doCrossValidation(new Instances(innerInstances), targetNumSelect, baseClassiferEnum, fsEnum);
+						//对于每一种组合情况都用一个线程去运行
+						CrossValidation crossValidation = new CrossValidation(fileName, outerIterate, innerIterate,
+								new Instances(innerInstances),
+								targetNumSelect, baseClassiferEnum, fsEnum, writer);
 
-						String resultStr = fileName + "," + outerIterate + "," + innerIterate + "," + result.getRealSelectedNum() + ","
-								+ baseClassiferEnum + "," + fsEnum + "," + result.getEvaluation().weightedAreaUnderROC() + "\r\n";
-						writer.write(resultStr);
-						System.out.println(resultStr);
+						//提交作业
+						pool.submit(crossValidation);
+						System.out.println("提交作业:\t"+crossValidation+"\t" + fileName + "\t" + outerIterate + "\t" + innerIterate + "\t" + fsEnum + "\t" + baseClassiferEnum);
+
+						if(interval_>=1) {
+							Thread.sleep(interval_);
+						}
 					}
-
 				}
 			}
 		} catch (Exception e) {
@@ -134,9 +188,12 @@ public class Driver {
 
 		String datasetName = MyTools.getBaseInfo("datasetName");
 		String resultPath = MyTools.getBaseInfo("resultPath");
+		int numThread= Integer.parseInt(MyTools.getBaseInfo("numThread"));
 
-		outerIterate_=Integer.parseInt(MyTools.getBaseInfo("outerIterate"));
-		innerIterate_=Integer.parseInt(MyTools.getBaseInfo("innerIterate"));
+		outerIterate_ = Integer.parseInt(MyTools.getBaseInfo("outerIterate"));
+		innerIterate_ = Integer.parseInt(MyTools.getBaseInfo("innerIterate"));
+		interval_ = Integer.parseInt(MyTools.getBaseInfo("interval"));
+
 
 		if (!Files.exists(Paths.get(resultPath))) {
 			try {
@@ -153,6 +210,9 @@ public class Driver {
 			for (String dataset : strs) {
 				System.out.println("开始运行项目：\t" + dataset + "\t" + new Date().toString());
 
+				//创建一个线程池
+				ExecutorService pool = Executors.newFixedThreadPool(numThread);
+				System.out.println("创建线程池：\t" + numThread);
 
 				//得到该数据集中的所有项目
 				currenctDataSet = MyTools.getProjects(dataset);
@@ -164,6 +224,7 @@ public class Driver {
 
 				//当前数据集中需要选择的特征个数
 				int targetNumSelect = Integer.parseInt(MyTools.getBaseInfo(dataset + "SelectNum"));
+
 
 				for (File file : currenctDataSet) {
 					Instances originalInstances = ConverterUtils.DataSource.read(file.toString());
@@ -179,12 +240,18 @@ public class Driver {
 							outerInstances.stratify(10);
 						}
 
-						doDefectPrediciton(file.getName(), outerInstances, outerIterate, targetNumSelect, bufferedWriter);
-						bufferedWriter.flush();
+						doDefectPrediciton(file.getName(), outerInstances, outerIterate, targetNumSelect, bufferedWriter, pool);
 					}
 				}
+				System.out.println("提交了所有任务：\t" + dataset + "\t" + new Date().toString());
+
+				while (!pool.isTerminated()){
+					Thread.sleep(1000);
+				};
+
 				bufferedWriter.flush();
 				bufferedWriter.close();
+				pool.shutdown();
 
 				System.out.println("结束运行项目：\t" + dataset + "\t" + new Date().toString());
 			}
