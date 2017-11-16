@@ -2,6 +2,7 @@ package com.nichao.driver;
 
 import com.nichao.core.*;
 import com.nichao.util.MyTools;
+import com.sun.org.apache.bcel.internal.generic.ARRAYLENGTH;
 import org.omg.PortableServer.THREAD_POLICY_ID;
 import weka.classifiers.Evaluation;
 import weka.core.Instances;
@@ -18,14 +19,16 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 
 /**
  * 使用多线程的方式运行交叉检验任务
  */
-class CrossValidation implements Runnable {
+class CrossValidation implements Callable<Result> {
 
 	private String fileName = null;
 	private int outerIterate = 0;
@@ -34,10 +37,9 @@ class CrossValidation implements Runnable {
 	private int targetNumSelect = 0;
 	private BaseClassiferEnum baseClassiferEnum = null;
 	private FeatureSelectMethodEnum fsEnum = null;
-	private BufferedWriter bufferedWriter = null;
 
 
-	public CrossValidation(String fileName, int outerIterate, int innerIterate, Instances instances, int targetNumSelect, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum, BufferedWriter bufferedWriter) {
+	public CrossValidation(String fileName, int outerIterate, int innerIterate, Instances instances, int targetNumSelect, BaseClassiferEnum baseClassiferEnum, FeatureSelectMethodEnum fsEnum) {
 
 		this.fileName = fileName;
 		this.outerIterate = outerIterate;
@@ -46,28 +48,11 @@ class CrossValidation implements Runnable {
 		this.targetNumSelect = targetNumSelect;
 		this.baseClassiferEnum = baseClassiferEnum;
 		this.fsEnum = fsEnum;
-		this.bufferedWriter = bufferedWriter;
-	}
-
-	/**
-	 * 同步每一个写出结果的线程
-	 *
-	 * @param result
-	 */
-	synchronized public void writeResults(Result result) {
-		String resultStr = fileName + "," + outerIterate + "," + innerIterate + "," + result.getRealSelectedNum() + ","
-				+ baseClassiferEnum + "," + fsEnum + "," + result.getEvaluation().weightedAreaUnderROC() + "\r\n";
-		try {
-			bufferedWriter.write(resultStr);
-			bufferedWriter.flush();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 	}
 
 
 	@Override
-	public void run() {
+	public Result call() throws Exception {
 		Result result = null;
 		Evaluation evaluations = null;
 		int realSelectedNum = 0;
@@ -102,15 +87,14 @@ class CrossValidation implements Runnable {
 
 			//ClassifierValidation类的内部同时完成预测性能的计算
 			evaluations = ClassifierValidation.classify(train, test, baseClassiferEnum, null);
-
-			result = new Result(realSelectedNum, evaluations);
+			result = new Result(fileName,outerIterate,innerIterate,realSelectedNum,baseClassiferEnum,fsEnum,evaluations);
 		} catch (Exception e) {
 			e.printStackTrace();
-		} finally {
-			//最终将结果写入到文件中
-			writeResults(result);
-			System.err.println("完成作业:\t"+this);
 		}
+
+
+		System.out.println("完成:"+Thread.currentThread().getId());
+		return result;
 	}
 }
 
@@ -140,10 +124,10 @@ public class Driver {
 	 * @param outerInstances  被外层随机化后的项目实例
 	 * @param outerIterate    外层循环的编号
 	 * @param targetNumSelect 需要选择的特征个数
-	 * @param writer          保存结果的文件句柄
 	 * @param pool            线程池
+	 * @param  futureList   保存future结果的list
 	 */
-	public static void doDefectPrediciton(String fileName, Instances outerInstances, int outerIterate, int targetNumSelect, BufferedWriter writer, ExecutorService pool) {
+	public static void doDefectPrediciton(String fileName, Instances outerInstances, int outerIterate, int targetNumSelect, ExecutorService pool, ArrayList<Future<Result>> futureList) {
 
 		try {
 			//这里进行内层的10次循环,某些方法得到的结果一致，但是有些方法每一次运行得到的结果都是不一样的
@@ -165,10 +149,10 @@ public class Driver {
 						//对于每一种组合情况都用一个线程去运行
 						CrossValidation crossValidation = new CrossValidation(fileName, outerIterate, innerIterate,
 								new Instances(innerInstances),
-								targetNumSelect, baseClassiferEnum, fsEnum, writer);
+								targetNumSelect, baseClassiferEnum, fsEnum);
 
 						//提交作业
-						pool.submit(crossValidation);
+						futureList.add(pool.submit(crossValidation));
 						System.out.println("提交作业:\t"+crossValidation+"\t" + fileName + "\t" + outerIterate + "\t" + innerIterate + "\t" + fsEnum + "\t" + baseClassiferEnum);
 
 						if(interval_>=1) {
@@ -208,6 +192,10 @@ public class Driver {
 			//遍历每一个数据集中的所有项目
 			String[] strs = datasetName.split(",");
 			for (String dataset : strs) {
+
+				//保存Future对象的List
+				ArrayList<Future<Result>> futureList=new ArrayList<>();
+
 				System.out.println("开始运行项目：\t" + dataset + "\t" + new Date().toString());
 
 				//创建一个线程池
@@ -240,18 +228,24 @@ public class Driver {
 							outerInstances.stratify(10);
 						}
 
-						doDefectPrediciton(file.getName(), outerInstances, outerIterate, targetNumSelect, bufferedWriter, pool);
+						doDefectPrediciton(file.getName(), outerInstances, outerIterate, targetNumSelect, pool,futureList);
 					}
 				}
 				System.out.println("提交了所有任务：\t" + dataset + "\t" + new Date().toString());
 
-				while (!pool.isTerminated()){
-					Thread.sleep(1000);
-				};
+				//不再接收新的任务
+				pool.shutdown();
+
+				//将结果写入到文件中
+				for(Future<Result> fr:futureList){
+
+					while(!fr.isDone());
+					bufferedWriter.write(fr.get().toString());
+					bufferedWriter.flush();
+				}
 
 				bufferedWriter.flush();
 				bufferedWriter.close();
-				pool.shutdown();
 
 				System.out.println("结束运行项目：\t" + dataset + "\t" + new Date().toString());
 			}
