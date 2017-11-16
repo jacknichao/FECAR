@@ -156,7 +156,7 @@ public class Driver {
 						System.out.println("提交作业:\t"+crossValidation+"\t" + fileName + "\t" + outerIterate + "\t" + innerIterate + "\t" + fsEnum + "\t" + baseClassiferEnum);
 
 						if(interval_>=1) {
-							Thread.sleep(interval_);
+							Thread.sleep(interval_*1000);
 						}
 					}
 				}
